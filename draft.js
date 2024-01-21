@@ -66,7 +66,7 @@ function refreshData() {
         }
 
         // sku的element
-        let sku_elems = document.getElementsByClassName('__mHr');
+        let sku_elems = document.getElementsByClassName('_Sku_gfy7s_1');
 
         // 存进去array
         let skus = [];
@@ -120,10 +120,8 @@ function refreshData() {
     else {
         console.log('产品页');
 
-        // 产品测试url https://admin.shopify.com/store/boardgame-master/products/4746753245247
-
-        let title_elem = document.getElementsByClassName('Polaris-Header-Title_2qj8j')[0];
-        let title_container_elem = document.getElementsByClassName('Polaris-Page-Header__TitleWrapper_bejfn')[0];
+        let title_elem = document.getElementsByClassName('Polaris-Header-Title')[0];
+        let title_container_elem = document.getElementsByClassName('Polaris-Page-Header__TitleWrapper')[0];
         let game_title = title_elem.innerText;
         let sku = document.getElementById('InventoryCardSku').value;
         if (sku.includes('+')) {
@@ -150,7 +148,7 @@ function refreshData() {
                     '</h1>';
 
                 // 修改：标题input box
-                let title_label = document.getElementsByClassName('Polaris-Labelled__LabelWrapper_bf6ys')[0];
+                let title_label = document.getElementsByClassName('Polaris-Label__Text')[0];
 
                 // 修改：collection
                 let collection_label = document.getElementById('CollectionsAutocompleteField1Label');
@@ -275,17 +273,11 @@ let is_loading = false;
 let loading_icon_count = -1;
 let interval = setInterval(() => {
     let elem = document.getElementsByClassName('Polaris-Header-Title'); // 库存主页面刷新按钮
-    // let elem2 = document.getElementsByClassName('ui-title-bar__title'); // 产品页刷新按钮
     if (elem.length > 0) {
         elem = elem[0];
         elem.removeEventListener('click', refreshData);
         elem.addEventListener('click', refreshData);
     }
-    // if (elem2.length > 0) {
-    //     elem2 = elem2[0];
-    //     elem2.removeEventListener('click', refreshData);
-    //     elem2.addEventListener('click', refreshData);
-    // }
 }, 1000);
 
 
