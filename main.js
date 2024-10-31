@@ -12,6 +12,8 @@ let in_inventory_page = location.href.includes('admin/products/inventory');
 let in_batch_editing_page = location.href.includes('admin/bulk');
 let in_product_page = location.href.includes('admin/products') && !in_inventory_page;
 
+console.log('inventory helper is running...');
+
 function refreshData() {
 
     // 不同的页面路径写在这里
