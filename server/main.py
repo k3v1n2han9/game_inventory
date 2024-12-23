@@ -136,6 +136,7 @@ def check_vr(game, outside):
                         "2022" in original_date_str
                         or "2023" in original_date_str
                         or "2024" in original_date_str
+                        or "2025" in original_date_str
                     ):
                         if "on" in original_date_str:
                             date = (
