@@ -128,7 +128,6 @@ def check_vr(game):
     产品状态、条形码、到货日期以及可用数量等信息。
 
     :param game:      需要搜索的游戏名称（或关键词）
-    :param outside:   是否返回完整的结果（字典形式）
     :return:          字典形式的产品信息，包括:
                       {
                           "status":   库存状态,
@@ -291,7 +290,7 @@ def check_game(game, return_json=True):
     """
     try:
         # 假设 check_vr 返回类似 {"status": "...", ...} 的字典
-        vr_result = check_vr(game, outside=True)
+        vr_result = check_vr(game)
     except Exception as e:
         # 如果 check_vr 出错，这里可以记录一下日志
         traceback.print_exc()
