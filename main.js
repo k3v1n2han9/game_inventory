@@ -2,7 +2,7 @@
 // @name         game_inventory
 // @namespace    http://tampermonkey.net/
 // @version      0.1
-// @description  try to take over the world!
+// @description  Shopify 产品页面库存辅助工具
 // @author       You
 // @match        https://admin.shopify.com/store/boardgame-master/*
 // @grant        none
@@ -10,6 +10,7 @@
 
 /**
  * 检查当前页面 URL 判断所在页面类型
+ * @returns {Object} 包含 inInventoryPage、inBatchEditingPage、inProductPage 属性
  */
 const getPageType = () => {
     const url = location.href;
@@ -21,39 +22,49 @@ const getPageType = () => {
 };
 
 /**
- * 用于模板字符串的占位符替换，比如将 "Hello {{name}}" 中的 {{name}} 替换为传入 json 对象中的 name 属性
+ * 模板字符串占位符替换函数
+ * 将模板中所有类似 {{key}} 的占位符替换为 values 对应的值
  * @param {string} template 模板字符串
- * @param {Object} values 对应的键值对
+ * @param {Object} values 键值对
  * @returns {string} 替换后的字符串
  */
-const mergeString = (template, values) => {
-    // 当模板中还有占位符时循环替换
-    while (template.includes('{{')) {
-        const key = template.split('{{')[1].split('}}')[0];
-        template = template.replace(`{{${key}}}`, values[key]);
-    }
-    return template;
-};
+const mergeString = (template, values) =>
+    template.replace(/{{(.*?)}}/g, (_, key) => values[key] ?? '');
 
 /**
  * 复制文本到剪贴板
+ * 优先使用 Clipboard API，如不支持则回退到 execCommand
  * @param {string} text 要复制的文本
  */
 const copyText = (text) => {
-    const virtualInput = document.createElement('input');
-    virtualInput.style.transform = 'scale(0.1)';
-    document.body.appendChild(virtualInput);
-    virtualInput.value = text;
-    virtualInput.select();
-    virtualInput.setSelectionRange(0, 99999);
-    document.execCommand('copy');
-    document.body.removeChild(virtualInput);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => console.log('Text copied to clipboard!'))
+            .catch((err) => console.error('Failed to copy text: ', err));
+    } else {
+        // 降级方案：创建隐藏输入框进行复制
+        const virtualInput = document.createElement('input');
+        virtualInput.style.position = 'fixed';
+        virtualInput.style.opacity = '0';
+        virtualInput.style.pointerEvents = 'none';
+        document.body.appendChild(virtualInput);
+        virtualInput.value = text;
+        virtualInput.select();
+        virtualInput.setSelectionRange(0, 99999); // 针对移动设备
+        try {
+            const successful = document.execCommand('copy');
+            console.log(successful ? 'Text copied to clipboard!' : 'Failed to copy text.');
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+        document.body.removeChild(virtualInput);
+    }
 };
 
 /**
- * 发送 GET 请求到 API，并解析返回的 JSON
+ * 发送 GET 请求到 API，并解析返回的 JSON 数据
  * @param {string} sku 产品 SKU
- * @returns {Promise<Object>} 返回一个 Promise，解析后的 JSON 数据
+ * @returns {Promise<Object>} Promise 对象，解析后的 JSON 数据
  */
 const fetchDataBySku = (sku) => {
     const apiUrl = 'https://game.kevinzhang.info/check-game/';
@@ -67,15 +78,13 @@ const fetchDataBySku = (sku) => {
 };
 
 /**
- * 批量修改页面逻辑处理：
- * 遍历所有行，提取 SKU 后发起请求，
- * 根据返回结果在对应行追加价格或状态提示。
+ * 批量修改页面处理逻辑：
+ * 遍历所有行，提取 SKU 后发起请求，根据返回结果在对应行追加价格或状态提示。
  */
 const handleBatchEditingPage = () => {
     console.log('当前为批量修改页面');
     // 延时2秒等待页面元素加载完成
     setTimeout(() => {
-        // 遍历每一行
         $('.spreadsheet__row').each(function () {
             const $row = $(this);
             const sku = $row.find('#product_variant_sku').val();
@@ -85,11 +94,9 @@ const handleBatchEditingPage = () => {
                         const tailElem = $row.find('.variant-option-value');
                         let tailHTML = tailElem.html();
                         // 如果有价格则标蓝，否则标红
-                        if (result.price) {
-                            tailHTML += `<span style="color:blue">($${result.price})</span>`;
-                        } else {
-                            tailHTML += `<span style="color:red">(${result.status})</span>`;
-                        }
+                        tailHTML += result.price
+                            ? `<span style="color:blue">($${result.price})</span>`
+                            : `<span style="color:red">(${result.status})</span>`;
                         tailElem.html(tailHTML);
                     })
                     .catch(error => console.error(`Error fetching SKU ${sku}:`, error));
@@ -99,15 +106,14 @@ const handleBatchEditingPage = () => {
 };
 
 /**
- * 库存主页面逻辑处理：
- * 隐藏原有库存状态，对每个 SKU 发起请求，然后在对应位置追加状态提示
+ * 库存主页面处理逻辑：
+ * 隐藏原有库存状态，对每个 SKU 发起请求，然后在对应位置追加状态提示。
  */
 const handleInventoryPage = () => {
     console.log('当前为库存主页面');
 
     // 隐藏所有已有的库存状态元素
-    const inventoryStatusElems = document.getElementsByClassName('inventory-status');
-    Array.from(inventoryStatusElems).forEach(elem => elem.style.display = 'none');
+    Array.from(document.getElementsByClassName('inventory-status')).forEach(elem => elem.style.display = 'none');
 
     // 获取所有显示 SKU 的元素
     const skuElems = document.getElementsByClassName('_Sku_gfy7s_1');
@@ -137,10 +143,63 @@ const handleInventoryPage = () => {
 };
 
 /**
- * 具体产品页逻辑处理：
- * 获取页面中的 SKU 与标题元素，
- * 发起请求后根据返回信息在标题上添加状态和供应商链接，
- * 同时对一些 label 做检查，若产品为预购/即将到货则追加复制按钮以及提示信息。
+ * 到货提示信息模板
+ * 包含 {{arrival}} 占位符，用于后续替换成计算后的到货日期
+ */
+const arrivalMessageTemplate = `<p><strong>Please read our pre-order policy at the foot of the webpage before ordering (It is important when you want the order sent separately).</strong></p>
+<p><span style="color: #ff0000;"><strong>Please be aware that the following product is a pre-order and is expected to be released/(Re)stocked in {{arrival}}.</strong></span></p>
+<p><span style="color: #ff0000;"><strong>As our supplier hasn’t provided a detailed release/restock date, so it is likely to delay. Thus, we strongly recommend you to order this item separately with all other items to avoid the possible late dispatch of the whole order.</strong></span></p><br><br><br><br>`;
+
+/**
+ * 根据返回的日期数据计算新 SKU 和到货日期
+ * @param {Array} dateArr 日期数组，可能包含具体日份或仅有月份信息
+ * @param {Object} ret 接口返回数据（需要 ret.num_on）
+ * @param {Array} monthStr 数组：['', "Jan", "Feb", ...]
+ * @param {Array} monthStrFull 数组：['', "January", "February", ...]
+ * @returns {Object} 包含 newSku 与 arrival（到货日期）属性
+ */
+const computeArrivalInfo = (dateArr, ret, monthStr, monthStrFull) => {
+    const MS_PER_DAY = 86400000;
+    let newSku = '';
+    let arrival = '';
+
+    if (dateArr.length === 3) {
+        // 当日期中包含具体日份，例如 "21st Mar 2025"
+        let day = dateArr[0].slice(0, -2); // 去掉 st, nd, rd, th
+        // 若日份不足两位，补零
+        day = day.padStart(2, '0');
+        // dateArr[1] 为月份缩写，dateArr[2] 为年份
+        let monthIndex = monthStr.indexOf(dateArr[1]);
+        let month = monthIndex < 10 ? '0' + monthIndex : '' + monthIndex;
+        // 构造基准日期字符串（采用 ISO 格式确保解析正确）
+        const baseDateStr = `${dateArr[2]}-${month}-${day}T00:00:00`;
+        const baseDate = new Date(baseDateStr);
+        // 加上28天，计算到货日期
+        const arrivalDate = new Date(baseDate.getTime() + 28 * MS_PER_DAY);
+        newSku = `9999${month}${day}${ret.num_on}`;
+        arrival = `${arrivalDate.getDate()} ${monthStrFull[arrivalDate.getMonth() + 1]} ${arrivalDate.getFullYear()}`;
+    } else if (dateArr.length === 0) {
+        // 没有具体到货日期信息
+        arrival = '(unknown)';
+    } else {
+        // 只有月份信息，例如 "Mar 2025"
+        const year = parseInt(dateArr[1].substring(0, 4), 10);
+        // monthStr 为 ['', "Jan", "Feb", ...]，dateArr[0] 在其中的索引为 1-based，转换为 0-based
+        const monthIndex = monthStr.indexOf(dateArr[0]) - 1;
+        // 构造当月第一天
+        const baseDate = new Date(year, monthIndex, 1);
+        // 按需求加一个月
+        baseDate.setMonth(baseDate.getMonth() + 1);
+        arrival = `${monthStrFull[baseDate.getMonth() + 1]} ${baseDate.getFullYear()}`;
+    }
+
+    return { newSku, arrival };
+};
+
+/**
+ * 具体产品页处理逻辑：
+ * 获取页面中 SKU 与标题元素，发起请求后根据返回信息在标题中追加状态及供应商链接，
+ * 若产品为预购/即将到货，则追加复制按钮和到货提示信息。
  */
 const handleProductPage = () => {
     console.log('当前为产品页');
@@ -168,7 +227,7 @@ const handleProductPage = () => {
           </h1>
         `;
 
-            // 检查各个 label 元素（Shopify 可能更新页面结构，方便调试）
+            // 检查各个 label 元素，便于调试（Shopify 页面结构可能更新）
             const titleLabel = document.getElementsByClassName('Polaris-Label__Text')[0];
             const collectionLabel = document.getElementById('CollectionsAutocompleteField1Label');
             const skuLabel = document.getElementById('InventoryCardSkuLabel');
@@ -184,7 +243,7 @@ const handleProductPage = () => {
                 }
             });
 
-            // 如果状态中包含 "Arriving Soon" 或 "Pre Order"，则追加复制按钮及提示信息
+            // 当状态中包含 "Arriving Soon" 或 "Pre Order" 时，追加复制按钮及提示信息
             if (status.includes('Arriving Soon') || status.includes('Pre Order')) {
                 // 为标题 label 追加复制按钮，点击后复制预购提示
                 titleLabel.innerHTML += mergeString(
@@ -195,78 +254,21 @@ const handleProductPage = () => {
                 if (status === 'Pre Order') {
                     collectionLabel.innerHTML += `<br><a href="javascript:copyText('Early Bird Discount')">复制Early Bird Discount</a>`;
                 }
-                // available 部分如果需要，可类似处理
-
-                // 根据返回的日期处理到货信息
+                // 根据接口返回的日期数据处理到货信息
                 const dateArr = ret.date.split(' ').filter(a => a);
-                let day = '';
-                let arrivalMessage = '';
-
-                if (dateArr.length === 3) {
-                    // 当日期中包含具体日份，例如 "21st Mar 2025"
-                    day = dateArr[0].slice(0, -2); // 去掉 st, nd, rd, th
-                    arrivalMessage = `<p><strong>Please read our pre-order policy at the foot of the webpage before ordering (It is important when you want the order sent separately).</strong></p>
-            <p><span style="color: #ff0000;"><strong>Please be aware that the following product is a pre-order and is expected to be released/(Re)stocked in {{arrival}}.</strong></span></p>
-            <p><span style="color: #ff0000;"><strong>As our supplier hasn’t provided a detailed release/restock date, so it is likely to delay. Thus, we strongly recommend you to order this item separately with all other items to avoid the possible late dispatch of the whole order.</strong></span></p><br><br><br><br>`;
-                } else {
-                    // 如果没有具体日份，则使用另一种格式
-                    arrivalMessage = `<p><strong>Please read our pre-order policy at the foot of the webpage before ordering (It is important when you want the order sent separately).</strong></p>
-            <p><span style="color: #ff0000;"><strong>Please be aware that the following product is a pre-order and is expected to be released/(Re)stocked in {{arrival}}.</strong></span></p>
-            <p><span style="color: #ff0000;"><strong>As our supplier hasn’t provided a detailed release/restock date, so it is likely to delay. Thus, we strongly recommend you to order this item separately with all other items to avoid the possible late dispatch of the whole order.</strong></span></p><br><br><br><br>`;
-                }
-
-                // 定义月份简写和全称数组
+                // 定义月份缩写和全称数组
                 const monthStr = ['', "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 const monthStrFull = ['', "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-                // 根据日期数据生成新的 SKU 和到货日期（此处逻辑根据原需求做处理）
-                let month = monthStr.indexOf(dateArr[dateArr.length - 2]);
-                month = month < 10 ? '0' + month : month;
-                if (day && Number(day) < 10) {
-                    day = '0' + day;
-                }
-                let newSku = '';
-                let arrival = '';
-                if (day) {
-                    // 定义一天的毫秒数
-                    const MS_PER_DAY = 86400000;
-                    // 构造基准日期字符串，确保使用 ISO 格式
-                    const baseDateStr = `${dateArr[dateArr.length - 1]}-${month}-${day}T00:00:00`;
-                    const baseDate = new Date(baseDateStr);
-                    // 加上28天的毫秒数得到到货日期
-                    const arrivalDate = new Date(baseDate.getTime() + 28 * MS_PER_DAY);
-
-                    // 拼接新 SKU 字符串（建议确保 month、day 均已补零）
-                    newSku = `9999${month}${day}${ret.num_on}`;
-                    // 格式化到货日期：获取日期、月份全称和年份
-                    arrival = `${arrivalDate.getDate()} ${monthStrFull[arrivalDate.getMonth() + 1]} ${arrivalDate.getFullYear()}`;
-                }
-                else if (dateArr.length === 0) {
-                    // 没有具体到货日期
-                    arrival = '(unknown)';
-                } else {
-                    // 只有月份信息：从 dateArr 中提取月份和年份
-                    const year = parseInt(dateArr[1].substring(0, 4), 10);
-
-                    // monthStr 为 ['', "Jan", "Feb", ...]，所以 dateArr[0] 在其中的索引是 1-based，需要转换为 0-based 索引
-                    const monthIndex = monthStr.indexOf(dateArr[0]) - 1;
-
-                    // 构造基准日期（当月第一天）
-                    const baseDate = new Date(year, monthIndex, 1);
-
-                    // 按需求加一个月
-                    baseDate.setMonth(baseDate.getMonth() + 1);
-
-                    // 格式化为 "月份全称 年份"（monthStrFull 为 ['', "January", "February", ...]）
-                    // 注意：baseDate.getMonth() 返回的是 0-based 月份，因此需加 1 取对应的全称
-                    arrival = `${monthStrFull[baseDate.getMonth() + 1]} ${baseDate.getFullYear()}`;
-                }
-                newSku += '+';
+                // 复用 computeArrivalInfo 计算新的 SKU 和到货日期
+                const { newSku, arrival } = computeArrivalInfo(dateArr, ret, monthStr, monthStrFull);
+                // 在 newSku 后追加加号（符合需求格式）
+                const finalNewSku = newSku + '+';
 
                 // 为 SKU label 追加复制按钮
-                skuLabel.innerHTML += mergeString(`<a href="javascript:copyText('{{newSku}}')">复制</a>`, { newSku });
-                // 将到货提示信息替换占位符后追加到产品描述中
-                const prependHTML = mergeString(arrivalMessage, { arrival });
+                skuLabel.innerHTML += mergeString(`<a href="javascript:copyText('{{newSku}}')">复制</a>`, { newSku: finalNewSku });
+                // 使用模板替换生成到货提示信息，并追加到产品描述中
+                const prependHTML = mergeString(arrivalMessageTemplate, { arrival });
                 gameDescriptionLabel.innerHTML += `<br>手动复制粘贴以下内容<br><div style="background-color: lightgray">${prependHTML}</div>`;
             }
         })
@@ -274,7 +276,7 @@ const handleProductPage = () => {
 };
 
 /**
- * 主刷新函数，根据当前页面类型执行不同的处理逻辑
+ * 主刷新函数，根据当前页面类型执行相应的处理逻辑
  */
 const refreshData = () => {
     console.log('刷新数据...');
@@ -292,8 +294,8 @@ const refreshData = () => {
 };
 
 /**
- * 每隔1秒为页面标题添加点击事件（作为刷新入口）
- * 这样当用户点击标题时就会执行 refreshData
+ * 每隔1秒为页面标题添加点击事件（作为刷新入口），
+ * 当用户点击标题时触发 refreshData 进行数据刷新
  */
 const attachRefreshEvent = () => {
     const headerTitleElems = document.getElementsByClassName('Polaris-Header-Title');
@@ -310,7 +312,7 @@ console.log('inventory helper is running...');
 // 定时检查标题元素是否存在，绑定点击事件（刷新数据）
 setInterval(attachRefreshEvent, 1000);
 
-// 下面将辅助函数也暴露到全局作用域，方便通过控制台调用（如 copyText、mergeString、refreshData）
+// 暴露辅助函数到全局作用域，方便通过控制台调用
 window.copyText = copyText;
 window.mergeString = mergeString;
 window.refreshData = refreshData;
