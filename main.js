@@ -218,7 +218,7 @@ const run = () => {
         console.log('当前为产品页');
 
         // 获取页面主要元素
-        const titleElem = document.getElementsByClassName('Polaris-Header-Title')[0];
+        const titleElem = document.getElementsByClassName('Polaris-Labelled__LabelWrapper')[0];
         const titleContainerElem = document.getElementsByClassName('Polaris-Page-Header__TitleWrapper')[0];
         const gameTitle = titleElem.innerText;
         let sku = document.getElementById('InventoryCardSku').value;
@@ -275,6 +275,7 @@ const run = () => {
 
                     // 复用 computeArrivalInfo 计算新的 SKU 和到货日期
                     const { newSku, arrival } = computeArrivalInfo(dateArr, ret, monthStr, monthStrFull);
+                    
                     // 在 newSku 后追加加号（符合需求格式）
                     const finalNewSku = newSku + '+';
 
@@ -312,7 +313,7 @@ const run = () => {
      * 当用户点击标题时触发 refreshData 进行数据刷新
      */
     const attachRefreshEvent = () => {
-        const headerTitleElems = document.getElementsByClassName('Polaris-Header-Title');
+        const headerTitleElems = document.getElementsByClassName('Polaris-Page-Header__TitleWrapper');
         if (headerTitleElems.length > 0) {
             const headerTitle = headerTitleElems[0];
             // 移除之前的监听，防止重复绑定
