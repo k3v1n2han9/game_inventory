@@ -1,106 +1,132 @@
 // ==UserScript==
-// @name         Auto Delete Chats
+// @name         Auto Delete Chats with Material Icons (Fixed Button)
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-06
-// @description  try to take over the world!
+// @version      2025-06-10
+// @description  在页面右下角固定显示“Delete Chats”按钮，点击后批量删除聊天记录
 // @author       You
 // @match        https://chatgpt.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=chatgpt.com
-// @grant        none
+// @resource     MaterialIcons https://fonts.googleapis.com/icon?family=Material+Icons
+// @grant        GM_getResourceText
+// @grant        GM_addStyle
 // ==/UserScript==
 
-function addDeleteChatsButton() {
-  // 获取目标元素
-  const targetElement = document.getElementsByClassName('bg-token-sidebar-surface-primary pt-0')[0];
+(function () {
+  'use strict';
 
-  // 创建 Delete Chats 按钮
-  const deleteButton = document.createElement('button');
-  deleteButton.textContent = 'Delete Chats';
-  deleteButton.className = 'flex w-full items-center gap-2.5 rounded-lg px-2 text-token-text-primary hover:bg-token-sidebar-surface-secondary h-9';
+  // 通过 @resource 加载 Material Icons 的 CSS，然后内联到页面中
+  const materialIconsCSS = GM_getResourceText('MaterialIcons');
+  GM_addStyle(materialIconsCSS);
 
-  // 挂载到目标元素下
-  targetElement.appendChild(deleteButton);
+  // 创建并插入右下角固定容器
+  function createFixedContainer() {
+    // 如果容器已经存在就不用重复创建
+    if (document.getElementById('delete-chats-container')) return;
 
-  // 添加点击事件
-  deleteButton.addEventListener('click', () => {
-    const userInput = prompt('Enter your auth token:');
-    if (userInput) {
-      selectDivsAndSendRequests(userInput).then(() => {
-        // 所有请求完成后，2秒钟后刷新页面
-        setTimeout(() => {
-          window.open('https://chatgpt.com/');
-        }, 2000);
-      });
-    } else {
-      console.log('No auth token provided. Request canceled.');
-    }
-  });
-}
+    const container = document.createElement('div');
+    container.id = 'delete-chats-container';
+    Object.assign(container.style, {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      zIndex: '10000',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: '8px',
+    });
+    document.body.appendChild(container);
+  }
 
-async function selectDivsAndSendRequests(authToken) {
-  // 获取所有包含 class "relative" 和 "grow" 的 div 元素
-  const selectedDivs = document.querySelectorAll('div.relative.grow');
+  // 向固定容器中添加按钮
+  function addDeleteChatsButton() {
+    createFixedContainer();
+    const container = document.getElementById('delete-chats-container');
+    if (!container) return;
 
-  // 遍历元素并发送请求
-  const requests = Array.from(selectedDivs).map(div => {
-    // 查找上一级的 <a> 标签
-    const parentLink = div.closest('a');
+    // 如果按钮已添加，则跳过
+    if (document.getElementById('btn-delete-chats')) return;
 
-    // 如果存在 <a> 标签且 href 包含 "https"
-    if (parentLink && parentLink.href.includes('https')) {
-      // 用 / 分隔 href 并取最后一个部分作为 id
-      const parts = parentLink.href.split('/');
-      const id = parts[parts.length - 1];
+    const deleteButton = document.createElement('button');
+    deleteButton.id = 'btn-delete-chats';
+    deleteButton.className =
+      'flex items-center gap-2.5 rounded-lg px-2 py-1 bg-gray-800 text-white hover:bg-gray-700';
+    deleteButton.style.cursor = 'pointer';
 
-      // 获取 div 的文字内容作为 name
-      const name = div.textContent.trim();
+    // 添加 Material Icons 垃圾桶图标
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'material-icons';
+    iconSpan.style.verticalAlign = 'middle';
+    iconSpan.textContent = 'delete';
+    deleteButton.appendChild(iconSpan);
 
-      // 检查 name 中是否包含中文中括号【
-      if (name.includes('【')) {
-        console.log(`Skipped: ${name}`);
-        return Promise.resolve(); // 跳过此元素的请求
-      }
+    // 添加按钮文字
+    const textNode = document.createTextNode(' Delete Chats');
+    deleteButton.appendChild(textNode);
 
-      // 创建对象
-      const result = { name, id };
-      console.log(result);
-
-      // 构建请求 URL
-      const requestUrl = `https://chatgpt.com/backend-api/conversation/${id}`;
-
-      // 发送 PATCH 请求
-      return fetch(requestUrl, {
-        method: 'PATCH',
-        headers: {
-          'accept': '*/*',
-          'accept-language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,zh-TW;q=0.6',
-          'authorization': `${authToken}`,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({ is_visible: false }),
-      })
-        .then(response => {
-          if (response.ok) {
-            console.log(`Request successful for id: ${id}`);
-          } else {
-            console.error(`Request failed for id: ${id}`);
-          }
-        })
-        .catch(error => {
-          console.error(`Error sending request for id: ${id}`, error);
+    // 点击事件：输入 token 并批量删除
+    deleteButton.addEventListener('click', () => {
+      const authToken = prompt('Enter your auth token:');
+      if (authToken) {
+        selectDivsAndSendRequests(authToken).then(() => {
+          // 完成后稍等 2 秒刷新
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
         });
-    } else {
-      return Promise.resolve(); // 如果条件不满足，返回已解决的 Promise
-    }
-  });
+      } else {
+        console.log('No auth token provided. Request canceled.');
+      }
+    });
 
-  // 等待所有请求完成
-  return Promise.all(requests);
-}
+    container.appendChild(deleteButton);
+  }
 
-// 调用函数添加按钮
-setTimeout(() => {
-  addDeleteChatsButton();
-}, 3000);
+  async function selectDivsAndSendRequests(authToken) {
+    const selectedDivs = document.querySelectorAll('div.grow');
+    const requests = Array.from(selectedDivs).map((div) => {
+      const parentLink = div.closest('a');
+      if (parentLink && parentLink.href.includes('https')) {
+        const parts = parentLink.href.split('/');
+        const id = parts[parts.length - 1];
+        const name = div.textContent.trim();
+        if (name.includes('【')) {
+          console.log(`Skipped: ${name}`);
+          return Promise.resolve();
+        }
+        console.log({ name, id });
+        const requestUrl = `https://chatgpt.com/backend-api/conversation/${id}`;
+        return fetch(requestUrl, {
+          method: 'PATCH',
+          headers: {
+            accept: '*/*',
+            'accept-language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,zh-TW;q=0.6',
+            authorization: authToken,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ is_visible: false }),
+        })
+          .then((response) => {
+            if (response.ok) {
+              console.log(`Request successful for id: ${id}`);
+            } else {
+              console.error(`Request failed for id: ${id}`);
+            }
+          })
+          .catch((error) => {
+            console.error(`Error sending request for id: ${id}`, error);
+          });
+      } else {
+        return Promise.resolve();
+      }
+    });
+    return Promise.all(requests);
+  }
 
+  // 初始化：页面加载后延迟插入按钮
+  setTimeout(addDeleteChatsButton, 3000);
 
+  // 可选：如果页面动态加载（如 SPA 切换路由），也可监听 DOM 变化，实时插入按钮
+  const observer = new MutationObserver(() => addDeleteChatsButton());
+  observer.observe(document.body, { childList: true, subtree: true });
+})();
