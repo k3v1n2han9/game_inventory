@@ -151,7 +151,7 @@ def check_vr(game):
 
     # 向 VR Distribution 发起搜索请求
     res = requests.get(
-        "https://vrdistribution.com.au/search?q=" + game, headers=headers
+        "https://www.vrdistribution.com.au/search?q=" + game, headers=headers
     )
 
     # 用 BeautifulSoup 解析返回的 HTML
