@@ -148,9 +148,9 @@ const run = () => {
      * 此模板中只有最后一段采用红色显示，与反馈要求一致
      */
     const arrivalMessageTemplateWithDate = `
-<p><strong>Please read our pre-order policy at the foot of the webpage before ordering (It is important when you want the order sent separately).</strong></p>
-<p><strong>All products purchased with pre-order items would be dispatched together when all pre-order items in the order become available. Preorder items are likely to be delayed. Thus, we recommend to order pre-order items separately with in-stock items to allow in-stock items to reach you faster.</p></strong>
-<p><span style="color: #ff0000;"><strong>Please be aware that the following product is a pre-order and will not be dispatched until it is released. The expected Release/Restock Date is {{arrival}}. The item will be dispatched as soon as we receive the stock.</strong></span></p>
+  <p><strong>Please review our pre-order policy at the bottom of the webpage before placing your order. This is especially important if you would like items shipped separately.</strong></p>
+  <p><strong>All products purchased together with pre-order items will be dispatched in one shipment once all pre-order items in the order are available. As pre-order items are often subject to delays, we strongly recommend placing separate orders for pre-order and in-stock items to ensure faster delivery of available products.</strong></p>
+  <p><span style="color: #ff0000;"><strong>Please note that the following item is a pre-order and will not be dispatched until its official release. The estimated release/restock date is {{arrival}}. Your order will be shipped as soon as we receive stock.</strong></span></p>
 `;
 
     /**
@@ -158,9 +158,9 @@ const run = () => {
      * 此模板中第二、第三段采用红色显示，与反馈要求一致
      */
     const arrivalMessageTemplateNoDate = `
-<p><strong>Please read our pre-order policy at the foot of the webpage before ordering (It is important when you want the order sent separately).</strong></p>
-<p><span style="color: #ff0000;"><strong>Please be aware that the following product is a pre-order and is expected to be released/(Re)stocked in {{arrival}}.</strong></span></p>
-<p><span style="color: #ff0000;"><strong>As our supplier hasn’t provided a detailed release/restock date, so it is likely to delay. Thus, we strongly recommend you to order this item separately with all other items to avoid the possible late dispatch of the whole order.</strong></span></p>
+  <p><strong>Please review our pre-order policy at the bottom of the webpage before placing your order — especially if you prefer to have items shipped separately.</strong></p>
+  <p><span style="color: #ff0000;"><strong>Please note that the following product is a pre-order and is expected to be released/restocked in {{arrival}} (one month after the VR date).</strong></span></p>
+  <p><span style="color: #ff0000;"><strong>As our supplier has not provided an exact release/restock date, delays are possible. For this reason, we strongly recommend placing a separate order for this item to avoid potential delays in the dispatch of your entire order.</strong></span></p>
 `;
 
     /**
@@ -234,7 +234,7 @@ const run = () => {
           <h1>
             <span style="color:red">(${status})</span>
             <br>
-            <a target="_blank" href="https://vrdistribution.com.au/search?q=${sku}">供应商网站（VR）</a>
+            <a target="_blank" href="https://www.vrdistribution.com.au/search?q=${sku}">供应商网站（VR）</a>
             <br>
             <a target="_blank" href="https://letsplaygames.com.au/catalogsearch/result/?q=${sku}">供应商网站（Let's Play）</a>
           </h1>
@@ -244,7 +244,8 @@ const run = () => {
                 const titleLabel = document.getElementsByClassName('Polaris-Label__Text')[0];
                 const collectionLabel = document.getElementById('CollectionsAutocompleteField1Label');
                 const skuLabel = document.getElementById('InventoryCardSkuLabel');
-                const gameDescriptionLabel = document.getElementById('product-descriptionLabel');
+                const gameDescriptionLabel = document.getElementById('product-description-rmLabel');
+                console.log(gameDescriptionLabel,248);
                 [
                     { name: 'title', elem: titleLabel },
                     { name: 'collection', elem: collectionLabel },
@@ -275,7 +276,7 @@ const run = () => {
 
                     // 复用 computeArrivalInfo 计算新的 SKU 和到货日期
                     const { newSku, arrival } = computeArrivalInfo(dateArr, ret, monthStr, monthStrFull);
-                    
+
                     // 在 newSku 后追加加号（符合需求格式）
                     const finalNewSku = newSku + '+';
 
