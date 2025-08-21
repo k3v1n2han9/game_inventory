@@ -234,7 +234,7 @@ const run = () => {
           <h1>
             <span style="color:red">(${status})</span>
             <br>
-            <a target="_blank" href="https://vrdistribution.com.au/search?q=${sku}">供应商网站（VR）</a>
+            <a target="_blank" href="https://www.vrdistribution.com.au/search?q=${sku}">供应商网站（VR）</a>
             <br>
             <a target="_blank" href="https://letsplaygames.com.au/catalogsearch/result/?q=${sku}">供应商网站（Let's Play）</a>
           </h1>
@@ -244,7 +244,7 @@ const run = () => {
                 const titleLabel = document.getElementsByClassName('Polaris-Label__Text')[0];
                 const collectionLabel = document.getElementById('CollectionsAutocompleteField1Label');
                 const skuLabel = document.getElementById('InventoryCardSkuLabel');
-                const gameDescriptionLabel = document.getElementById('product-descriptionLabel');
+                const gameDescriptionLabel = document.getElementsByClassName('Polaris-Labelled__LabelWrapper')[1];
                 [
                     { name: 'title', elem: titleLabel },
                     { name: 'collection', elem: collectionLabel },
