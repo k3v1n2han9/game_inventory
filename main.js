@@ -164,28 +164,33 @@ const run = () => {
       "_ProductLink_1mu6q_24 _primary_1mu6q_45"
     );
     // 保存 SKU 对应的 DOM 元素及其文本（可能带有 '+' 符号）
-    const skuObjects = Array.from(titleElems).map((elem) => ({
-      elem,
-      skuWithPlus: elem.innerText,
-    }));
+    const skuObjects = Array.from(skuElems)
+      .concat(Array.from(titleElems))
+      .map((elem) => ({
+        elem,
+        skuWithPlus: elem.innerText,
+      }));
+
+    // 去除所有中文中括号【】内的内容并做 trim
+    function sanitizeNameForQuery(str) {
+      if (typeof str !== "string") return "";
+      return str.replace(/【[^】]*】/g, "").trim();
+    }
 
     skuObjects.forEach((skuObj) => {
-      console.log(skuObj.skuWithPlus,173)
       // 处理 SKU 中可能带有 '+' 的情况，取最后一个部分
       let { skuWithPlus } = skuObj;
       let sku = skuWithPlus.includes("+")
-        ? skuWithPlus.split("+").pop()
-        : skuWithPlus;
+        ? skuWithPlus.split("+").pop().trim()
+        : skuWithPlus.trim();
       skuObj.sku = sku;
 
-      const nameForQuery = sku;
+      // 去除中文中括号内容，并 trim
+      const nameForQuery = sanitizeNameForQuery(sku);
 
-      // 发起请求，并在对应的 SKU 元素后追加状态提示
       fetchDataByName(nameForQuery)
         .then((result) => {
-          // 查找目标元素
           const target = skuObjects.find((item) => item.sku === sku);
-          // 根据返回的状态决定样式：如果状态为 "Order Now" 则蓝色，否则红色且加粗
           const style =
             result.status === "Order Now"
               ? "color:blue"
@@ -320,7 +325,9 @@ const run = () => {
     <div class="supplier-links">
       <a target="_blank" href="https://www.vrdistribution.com.au/search?q=${sku}">供应商网站（VR）</a>
       <br>
-      <a target="_blank" href="https://letsplaygames.com.au/catalogsearch/result/?q=${cleanTitleQuery}">供应商网站（Let's Play）</a>
+      <a target="_blank" href="https://letsplaygames.com.au/catalogsearch/result/?q=${cleanTitleQuery}">供应商网站（Let's Play - title）</a>
+      <br>
+      <a target="_blank" href="https://letsplaygames.com.au/catalogsearch/result/?q=${sku}">供应商网站（Let's Play - sku）</a>
     </div>
     `
           );
