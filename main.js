@@ -289,7 +289,10 @@ const run = () => {
       "Polaris-Page-Header__TitleWrapper"
     )[0];
     const gameTitle = titleElem?.innerText || "";
-    let sku = document.getElementById("InventoryCardSku")?.value || "";
+    const skuLabel = Array.from(
+      document.getElementsByClassName("_BasePill_g6xzr_46")
+    ).find((el) => el.getAttribute("aria-label") === "SKU");
+    let sku = (skuLabel.textContent|| "").split('SKU').join('') ;
     if (sku.includes("+")) {
       sku = sku.split("+").pop();
     }
@@ -340,7 +343,7 @@ const run = () => {
         const collectionLabel = document.getElementById(
           "CollectionsAutocompleteField1Label"
         );
-        const skuLabel = document.getElementById("InventoryCardSku");
+
         const gameDescriptionLabel = document.getElementsByClassName(
           "Polaris-Labelled__LabelWrapper"
         )[1];
